@@ -1,0 +1,56 @@
+version: '3'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+
+  kafka:
+    container_name: kafka
+    image: wurstmeister/kafka
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_PORT: 9091
+      KAFKA_CREATE_TOPICS: "words:1:1"  
+    ports:
+      - "9091:9091"
+    depends_on:
+      - zookeeper
+  db:
+    image: mysql
+    restart: always
+    container_name: mysql-dev
+    command: --lower_case_table_names=1
+    ports: 
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: WordDB
+      MYSQL_USER: radware
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: password
+
+    volumes:
+      - my-db:/var/lib/mysql
+      - ./sql-scripts/:/docker-entrypoint-initdb.d/ 
+
+  web1:
+    image: dkhatkar/word-chunks-app:word-count-api
+    ports:
+      - "8090:8090"
+    depends_on:
+      - db
+      - kafka
+  web2:
+    image: dkhatkar/word-chunks-app:word-ingestion-api
+    ports:
+      - "8070:8070"
+    depends_on:
+      - kafka
+  web3:
+    image: dkhatkar/word-chunks-app:front-end
+    ports:
+      - "3000:3000"
+volumes:
+  my-db:
+
